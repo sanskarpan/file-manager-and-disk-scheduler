@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Manager</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>File Manager</h1>
+        <div class="menu">
+            <button onclick="listFiles()">Show all files</button>
+            <button onclick="createFile()">Create a new file</button>
+            <button onclick="deleteFile()">Delete an existing file</button>
+            <button onclick="renameFile()">Rename a file</button>
+            <button onclick="editFile()">Edit file content</button>
+            <button onclick="searchFile()">Search for a file</button>
+            <button onclick="fileDetails()">Show details of a file</button>
+            <button onclick="viewFile()">View contents of a file</button>
+            <button onclick="sortFileContents()">Sort contents of a file</button>
+            <button onclick="listDirectories()">List all directories</button>
+        </div>
+        <div class="output" id="output"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
