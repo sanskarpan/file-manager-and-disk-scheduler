@@ -1,0 +1,405 @@
+Damn bro this is working
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+	
+	
+			
+				Huffcode.push_back(0);
+				Huffcode.push_back(1);
+			charactermap[i].second = str;
+			cout<<"\t    "<<ch<<"\t\t\t  "<<actual_frequency[i]<<"\n";
+			cout<<"\t    "<<str<<"\t\t  "<<actual_frequency[i]<<"\n";
+			else
+			if(temp[j] == '1')
+			out<<codes[i];
+			out<<endl;
+			total_bits++;
+			{
+			{
+			}
+			}
+		ch = char(ASCII_values[i]);
+		ch = char(root->data);
+		char ch;
+		charactermap.push_back(make_pair(ch,""));
+		cin>>y;
+		codes = codes + "_" + " " + str + " ";
+		codes = codes + ch + " " + str + " ";
+		count3++;
+		cout <<"Error !!! Cannot open Source file.\n";
+		else
+		else	
+		exit(1);
+		flush();
+		for(int j=0; j < temp.length();j++)
+		for(int j=0;j < temp.size();j++)          //For storing strings bits into integer vector,for 								   writing bit by bit in file 
+		if(ch == ' ')
+		if(charactermap[i].first == ch)
+		if(codes[i] != (int)(-1065027))
+		if(frequency[j] != 0)
+		out << setw(indent) << " " << (char)root->data << endl;
+		printTree(out, root->left, indent + 4);
+		printTree(out, root->right, indent + 4);
+		temp = charactermap[i].second;
+		temp = charactermap[i].second;                   
+		{
+		{
+		{
+		{
+		}
+		}
+		}
+		}
+		}
+	    s.writeBit(temp1);                //To write Bit by bit by bit in compressed file
+	ASCII_values[k] = 129;
+	BitwiseWrite s(fout);
+	Convert_StringBits_to_IntegerBits();          //Converts character from charactermap to int vector
+	Huffcode.push_back(-1);
+	actual_frequency[y] = 1;     // For adding pseudo-EOF in actual_frequency & ASCII_values arrays
+	cal_compressionRatio();                //To calculate compression ratio
+	char buf;
+	char cfilename[50];
+	char ch;
+	char ch;
+	char ch;
+	char filename[50];
+	cin>>filename;
+	cin>>v;
+	count1++;
+	cout<<"\n";
+	cout<<"\nActual Size of File  = "<<lsize<<" Bytes";
+	cout<<"\nCharacter Table with Huffman codes \n";
+	cout<<"\nCompression Ratio achieved : "<<cratio<<"% !";
+	cout<<"\nCompression Successful !!!";
+	cout<<"\nEnter any key to exit : ";
+	cout<<"\nHuffman encoding Tree : \n";
+	cout<<"\nProcessing.... Plz wait !!!";
+	cout<<"\nSize of Compressed File = "<<lcsize<<" Bytes";
+	cout<<"\n\nEnter Name of File to Compress : ";
+	cout<<"\n\t====================================";
+	cout<<"\n\tCharacter\t\tHuffman Code\n";
+	cout<<"\n\tFrequency Table of Characters present in file\n\n";
+	cout<<"\n\t\t  Text File Compressor\n";
+	cout<<"\t====================================";
+	cout<<"\t===================================================\n";
+	cout<<"\t===================================================\n";
+	cout<<"\tCharacters\t\tFrequency\n";
+	cratio = (csize/size)*100;
+	csize = Huffcode.size()/8;
+	else
+	filename[len-1] = 'p';
+	filename[len-2] = 'm';
+	filename[len-3] = 'c';
+	for (int i = 0; i < charactermap.size();i++)
+	for(int d = 0;d < Huffcode.size();d++) {
+	for(int i = 0;i < count3;i++)
+	for(int i=0; i < charactermap.size();i++)
+	for(int i=0; i < codes.size();i++)
+	for(int i=0; i < count1; i++)
+	if (root != NULL)
+	if( ch >=32 && ch < 255)
+	if( i == -1)     //for last bit if buffer is not full still flush buffer
+	if(!fin.is_open())
+	if(root->data == ' ')
+	int ASCII_values[256];
+	int Tbits;
+	int actual_frequency[256];
+	int frequency[256];
+	int k =0;
+	int len = strlen(filename);
+	int temp1;
+	int total_bits = 0;
+	int v;
+	int x;
+	lcsize = Huffcode.size()/8;
+	long double cratio;
+	long double csize = 0;
+	long double size = 0;
+	long long lcsize = 0;
+	long long lsize = 0;
+	lsize = x;
+	ofstream fout;
+	ofstream out;
+	ostream& out;
+	out.close();
+	out.open("12mb.txt");
+	printFrequencyTable(actual_frequency,ASCII_values);  // Print frequency table
+	printTree(cout,minHeap.top(),0);      //To display formed Tree  with '■' as parent nodes(including root)
+	private:
+	public:
+	return total_bits;
+	size = size /8;
+	size = x * 8;
+	str = str+"Space";
+	string decode;
+	string str = "";
+	string temp;
+	string temp;
+	temp1 = Huffcode[d];
+	write_codes();
+	x = count3;
+	x = x - 1;
+	{
+	{
+	{
+	{
+	{
+	{
+	{
+	{
+	{
+	}
+	}
+	}
+	}
+	}
+	}
+	}
+	}
+	}
+ 							//clear buffer and bit counter
+  	 } 
+   	 for(int j=32;j < 254;j++)   //For seperating occurring and non-occurring characters & to create actual 
+   	 int y=0;
+   	 {			             // frequency array & ASCII_values array
+   	HuffmanCodes(ASCII_values,actual_frequency,count1);  //Function to build Huffman tree
+   	SeperateCharacter(frequency,actual_frequency,ASCII_values);  //Make actual frequency array and ASCII values
+   	calculate_frequency(frequency,filename);  	//To calculate frequency of each character in file
+   	for(int i=0;i < 255;i++)     //To set initial values of arrays
+     		//cout  <<"\t"<< charactermap[i].first <<"\t"<< charactermap[i].second<<"\n";
+        
+        	{
+          	  actual_frequency[k] = frequency[j];
+           	 ASCII_values[y] = j;
+           	 count1++;
+           	 k++;
+           	 y++;
+        // Create a new internal node with
+        // Extract the two minimum
+        // for internal nodes, not used
+        // freq items from min heap
+        // frequency equal to the sum of the
+        // of this new node. Add this node
+        // to the min heap '■' is a special value
+        // two extracted node as left and right children
+        // two nodes frequencies. Make the
+        cout <<"\t    "<< ch << "\t\t\t  " << str << "\n";
+        frequency[y]=frequency[y]+1;
+        left = minHeap.top();
+        left = right = NULL;
+        minHeap.pop();
+        minHeap.pop();
+        minHeap.push(new MinHeapNode(data[i], freq[i]));
+        minHeap.push(top);
+        return (l->freq > r->freq);
+        return;
+        right = minHeap.top();
+        this->data = data;
+        this->freq = freq;
+        top = new MinHeapNode(chh, left->freq + right->freq);
+        top->left = left;
+        top->right = right;
+        y = int(ch);
+     ch1 = char(129);
+     }
+    // Create a min heap & inserts all characters of data[]
+    // Frequency of the character
+    // Iterate while size of heap doesn't become 1
+    // Left and right child
+    // One of the input characters
+    // Print Huffman codes using
+    // the Huffman tree built above
+    ASCII_values[i] = 0;
+    MinHeapNode *left, *right;
+    MinHeapNode(int data, int freq)
+    actual_frequency[i] = 0;
+    bool operator()(MinHeapNode* l, MinHeapNode* r)
+    buf = buf & mask;
+    buf = buf | mask;
+    char ch,ch1;
+    charactermap.push_back(make_pair(ch1,""));
+    count3++;
+    fin.close();
+    fin.open(filename);
+    flush();
+    for (int i = 0; i < size; ++i)                                //Build Heap
+    if (!root)
+    if (root->data != chh)
+    ifstream fin;
+    int data;
+    int f;
+    int freq;
+    int x;
+    int y;
+    mask = mask << (7 - Tbits);
+    mask = mask << (7 - Tbits);
+    mask = ~mask;
+    printCodes(minHeap.top(),"");
+    printCodes(root->left, str + "0");
+    printCodes(root->right, str + "1");
+    return 0;
+    struct MinHeapNode *left, *right, *top;
+    while (minHeap.size() != 1) {
+    while(fin.get(ch))
+    {
+    {
+    {
+    {
+    }
+    }
+    }
+    }
+    }
+  //if the int is 0, we must put the bit 0 into the buffer
+  //if the int is 1, we must put the bit 1 into the buffer
+  Tbits++;                   //increment Tbits++
+  if(Tbits == 8) //if buffer full(8 bit) clear buffer
+  void flush();   	 // write buffer into output file and clear it 
+#include<cstring>
+#include<fstream>
+#include<iomanip>
+#include<iostream>
+#include<queue>
+#include<vector>
+// C++ program for Huffman Coding
+// Driver program to test above functions
+// For comparison of
+// Prints huffman codes from
+// The main function that builds a Huffman Tree and
+// print codes by traversing the built Huffman Tree
+// the root of Huffman Tree.
+// two heap nodes (needed in min heap)
+//================================================================================================
+//===================================================================================================
+//int r = 0;
+BitwiseWrite(ostream & os) : out(os),buf(0),Tbits(0)
+buf = Tbits = 0;
+char chh = char(num);
+class BitwiseWrite
+fout.open(filename,ios::binary);
+frequency[i] = 0;
+if(i == 0) 
+if(i == 1) 
+int count1 = 0;
+int count3 = 0;
+int ct = 0;
+int main()
+int n=0;
+int num = 254;
+int p;
+int q = 0;
+int total_bits_written()
+out.flush();
+out.put(buf);
+priority_queue<MinHeapNode*, vector<MinHeapNode*>, compare> minHeap;
+string codes;
+string str1= "";
+string str;
+struct MinHeapNode {
+struct compare {
+unsigned char mask = 1;
+using namespace std;
+vector<int> Huffcode;
+vector<pair<char,string> > charactermap;
+void BitwiseWrite::flush() {
+void BitwiseWrite::writeBit(int i) // Write the least significant bit of the argument to the bit buffer
+void Convert_StringBits_to_IntegerBits()
+void HuffmanCodes(int data[], int freq[], int size)
+void SeperateCharacter(int frequency[],int actual_frequency[],int ASCII_values[])
+void cal_compressionRatio()
+void calculate_frequency(int frequency[],char filename[])
+void printCodes(struct MinHeapNode* root, string str)
+void printFrequencyTable(int actual_frequency[],int ASCII_values[])
+void printTree(ostream & out,struct MinHeapNode* root,int indent)
+void writeBit(int i);
+void write_codes()     //creates codes file
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+{
+}
+}
+}
+}
+}
+}
+}
+}
+}
+}
+}
+}
+}
+}
+}
+}
+} 
+} 
+} 
+};
+};
+};
