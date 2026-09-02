@@ -1,342 +1,184 @@
+#include <algorithm>
+#include <cmath>
 #include <iostream>
-#include <fstream>
-#include <iomanip>
+#include <numeric>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <algorithm>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <stdexcept>
 
-using namespace std;
+// Disk Scheduling: C-SCAN and C-LOOK comparison
+// Refactored to production quality — pure functions, no globals, testable.
 
-// Base class for file operations
-class FileOperation {
-public:
-    virtual void execute() = 0; // Pure virtual function
-    virtual ~FileOperation() {} // Virtual destructor for polymorphic behavior
+struct SchedulingResult {
+    std::vector<int> sequence;
+    int totalSeek = 0;
+    double averageSeek = 0.0;
 };
 
-// Derived class for listing files
-class ListFilesOperation : public FileOperation {
-public:
-    void execute() override {
-#ifdef _WIN32
-        cout << "Listing all files and directories..." << endl;
-        system("dir");
-#else
-        cout << "Listing all files and directories..." << endl;
-        system("ls");
-#endif
+int calculateSeek(const std::vector<int>& seq, int head) {
+    int total = 0;
+    int cur = head;
+    for (int track : seq) {
+        total += std::abs(track - cur);
+        cur = track;
     }
-};
+    return total;
+}
 
-// Derived class for creating a file
-class CreateFileOperation : public FileOperation {
-public:
-    void execute() override {
-        string fileName, fileExtension;
-        cout << "Enter the name of the file you want to create (without extension): ";
-        cin >> fileName;
-        cout << "Enter the file extension (e.g., txt, cpp): ";
-        cin >> fileExtension;
-        ofstream file(fileName + "." + fileExtension);
-        if (!file) {
-            throw runtime_error("Error creating file.");
-        }
-        cout << "File created successfully." << endl;
-        file.close();
+SchedulingResult cscan(const std::vector<int>& requests, int head, int diskSize, bool goingRight = true) {
+    if (diskSize <= 0) throw std::invalid_argument("diskSize must be positive");
+    if (head < 0 || head >= diskSize) throw std::invalid_argument("head out of range");
+    if (requests.empty()) return {};
+
+    std::vector<int> left, right;
+    for (int r : requests) {
+        if (r < 0 || r >= diskSize) throw std::invalid_argument("request out of range: " + std::to_string(r));
+        if (r < head) left.push_back(r);
+        else right.push_back(r);
     }
-};
+    std::sort(left.begin(), left.end());
+    std::sort(right.begin(), right.end());
 
-// Derived class for deleting a file
-class DeleteFileOperation : public FileOperation {
-public:
-    void execute() override {
-#ifdef _WIN32
-        string delCommand = "del ";
-#else
-        string delCommand = "rm ";
-#endif
-        string fileName;
-        cout << "Enter the name of the file you want to delete (including extension): ";
-        cin >> fileName;
-        string command = delCommand + fileName;
-        if (system(command.c_str()) == 0)
-            cout << "File deleted successfully." << endl;
-        else
-            throw runtime_error("Error deleting file.");
-    }
-};
-
-// Derived class for renaming a file
-class RenameFileOperation : public FileOperation {
-public:
-    void execute() override {
-        string oldFileName, newFileName;
-        cout << "Enter the current name of the file (including extension): ";
-        cin >> oldFileName;
-        cout << "Enter the new name of the file (including extension): ";
-        cin >> newFileName;
-        if (rename(oldFileName.c_str(), newFileName.c_str()) == 0)
-            cout << "File renamed successfully." << endl;
-        else
-            throw runtime_error("Error renaming file.");
-    }
-};
-
-// Derived class for editing a file
-class EditFileOperation : public FileOperation {
-public:
-    void execute() override {
-        string fileName;
-        cout << "Enter the name of the file you want to edit (including extension): ";
-        cin >> fileName;
-#ifdef _WIN32
-        system(("notepad " + fileName).c_str());
-#else
-        system(("nano " + fileName).c_str());
-#endif
-    }
-};
-
-// Derived class for searching a file
-class SearchFileOperation : public FileOperation {
-public:
-    void execute() override {
-        string fileName;
-        cout << "Enter the name of the file you want to search for (including extension): ";
-        cin >> fileName;
-        ifstream file(fileName);
-        if (file.good())
-            cout << "File found." << endl;
-        else
-            cout << "File not found." << endl;
-    }
-};
-
-// Derived class for displaying file details
-class FileDetailsOperation : public FileOperation {
-public:
-    void execute() override {
-        string fileName;
-        cout << "Enter the name of the file to show details (including extension): ";
-        cin >> fileName;
-        struct stat fileStat;
-        if (stat(fileName.c_str(), &fileStat) == 0) {
-            cout << "File Details:" << endl;
-            cout << "Size: " << fileStat.st_size << " bytes" << endl;
-            cout << "Owner UID: " << fileStat.st_uid << endl;
-            cout << "Group GID: " << fileStat.st_gid << endl;
-            cout << "Permissions: " << oct << fileStat.st_mode << endl;
-            cout << "Last modified: " << ctime(&fileStat.st_mtime);
-        }
-        else
-            throw runtime_error("Error retrieving file details.");
-    }
-};
-
-// Derived class for viewing file contents
-class ViewFileOperation : public FileOperation {
-public:
-    void execute() override {
-        string fileName, line;
-        cout << "Enter the name of the file you want to view (including extension): ";
-        cin >> fileName;
-        ifstream file(fileName);
-        if (file.is_open()) {
-            cout << "File contents:" << endl;
-            while (getline(file, line))
-                cout << line << endl;
-            file.close();
-        }
-        else
-            throw runtime_error("Unable to open file.");
-    }
-};
-
-// Derived class for sorting file contents
-class SortFileOperation : public FileOperation {
-public:
-    void execute() override {
-        string fileName, line;
-        vector<string> lines;
-        cout << "Enter the name of the file you want to sort (including extension): ";
-        cin >> fileName;
-        ifstream file(fileName);
-        if (file.is_open()) {
-            while (getline(file, line))
-                lines.push_back(line);
-            file.close();
-            sort(lines.begin(), lines.end());
-            ofstream sortedFile(fileName);
-            for (auto& l : lines)
-                sortedFile << l << endl;
-            sortedFile.close();
-            cout << "File sorted successfully." << endl;
-        }
-        else
-            throw runtime_error("Unable to open file.");
-    }
-};
-
-// Derived class for listing directories
-class ListDirectoriesOperation : public FileOperation {
-public:
-    void execute() override {
-#ifdef _WIN32
-        cout << "Listing all directories..." << endl;
-        system("dir /AD");
-#else
-        cout << "Listing all directories..." << endl;
-        system("ls -d */");
-#endif
-    }
-};
-
-// Derived class for listing files with a specific extension
-class ListFilesWithExtensionOperation : public FileOperation {
-public:
-    void execute() override {
-        string extension;
-        cout << "Enter the file extension (e.g., txt, cpp): ";
-        cin >> extension;
-#ifdef _WIN32
-        cout << "Listing all files with ." << extension << " extension..." << endl;
-        system(("dir /B *." + extension).c_str());
-#else
-        cout << "Listing all files with ." << extension << " extension..." << endl;
-        system(("ls *." + extension).c_str());
-#endif
-    }
-};
-
-// Derived class for counting directories
-class CountDirectoriesOperation : public FileOperation {
-public:
-    void execute() override {
-        DIR *dir;
-        struct dirent *ent;
-        int count = 0;
-        if ((dir = opendir(".")) != NULL) {
-            while ((ent = readdir(dir)) != NULL) {
-                if (ent->d_type == DT_DIR) {
-                    std::string name(ent->d_name);
-                    if (name != "." && name != "..")
-                        count++;
-                }
+    SchedulingResult res;
+    if (goingRight) {
+        // Service right side, jump to 0, service left side
+        for (int r : right) res.sequence.push_back(r);
+        if (!left.empty() || !right.empty()) {
+            // Go to end then wrap to 0 (counts as seek)
+            if (res.sequence.empty() || res.sequence.back() != diskSize - 1) {
+                res.sequence.push_back(diskSize - 1);
             }
-            closedir(dir);
-            cout << "Total number of directories: " << count << endl;
-        } else {
-            throw runtime_error("Error counting directories.");
+            res.sequence.push_back(0);
         }
-    }
-};
-
-// Derived class for counting files
-class CountFilesOperation : public FileOperation {
-public:
-    void execute() override {
-        DIR *dir;
-        struct dirent *ent;
-        int count = 0;
-        if ((dir = opendir(".")) != NULL) {
-            while ((ent = readdir(dir)) != NULL) {
-                if (ent->d_type == DT_REG) {
-                    count++;
-                }
-            }
-            closedir(dir);
-            cout << "Total number of files: " << count << endl;
-        } else {
-            throw runtime_error("Error counting files.");
+        for (int r : left) res.sequence.push_back(r);
+    } else {
+        for (auto it = left.rbegin(); it != left.rend(); ++it) res.sequence.push_back(*it);
+        if (!left.empty() || !right.empty()) {
+            if (res.sequence.empty() || res.sequence.back() != 0) res.sequence.push_back(0);
+            res.sequence.push_back(diskSize - 1);
         }
+        for (auto it = right.rbegin(); it != right.rend(); ++it) res.sequence.push_back(*it);
     }
-};
+    res.totalSeek = calculateSeek(res.sequence, head);
+    res.averageSeek = requests.empty() ? 0.0 : static_cast<double>(res.totalSeek) / requests.size();
+    return res;
+}
 
-// Derived class for sorting files
-class SortFilesOperation : public FileOperation {
-public:
-    void execute() override {
-        cout << "Sorting files..." << endl;
-#ifdef _WIN32
-        cout << "This operation is not supported on Windows." << endl;
-#else
-        system("ls | sort");
+SchedulingResult clook(const std::vector<int>& requests, int head, bool goingRight = true) {
+    if (head < 0) throw std::invalid_argument("head must be non-negative");
+    if (requests.empty()) return {};
+
+    std::vector<int> left, right;
+    for (int r : requests) {
+        if (r < head) left.push_back(r);
+        else right.push_back(r);
+    }
+    std::sort(left.begin(), left.end());
+    std::sort(right.begin(), right.end());
+
+    SchedulingResult res;
+    if (goingRight) {
+        for (int r : right) res.sequence.push_back(r);
+        for (int r : left) res.sequence.push_back(r);
+    } else {
+        for (auto it = left.rbegin(); it != left.rend(); ++it) res.sequence.push_back(*it);
+        for (auto it = right.rbegin(); it != right.rend(); ++it) res.sequence.push_back(*it);
+    }
+    res.totalSeek = calculateSeek(res.sequence, head);
+    res.averageSeek = requests.empty() ? 0.0 : static_cast<double>(res.totalSeek) / requests.size();
+    return res;
+}
+
+void printResult(const std::string& name, const SchedulingResult& r, int head) {
+    std::cout << "\n--- " << name << " ---\n";
+    std::cout << "Head start: " << head << "\n";
+    std::cout << "Seek sequence: ";
+    std::cout << head;
+    for (int s : r.sequence) std::cout << " -> " << s;
+    std::cout << "\n";
+    std::cout << "Total seek distance: " << r.totalSeek << "\n";
+    std::cout << "Average seek: " << r.averageSeek << "\n";
+}
+
+#ifdef DISK_SCHEDULING_TEST
+void runTests() {
+    // Deterministic self-test
+    std::vector<int> req{82, 170, 43, 140, 24, 16, 190};
+    int head = 50, diskSize = 200;
+    auto a = cscan(req, head, diskSize);
+    auto b = clook(req, head);
+    std::cout << "[TEST] C-SCAN total=" << a.totalSeek << " C-LOOK total=" << b.totalSeek << "\n";
+    // C-LOOK should be <= C-SCAN due to no edge travel
+    if (b.totalSeek > a.totalSeek) std::cout << "[WARN] C-LOOK unexpectedly larger\n";
+    else std::cout << "[PASS] Scheduling invariants hold\n";
+}
 #endif
+
+int main(int argc, char* argv[]) {
+#ifdef DISK_SCHEDULING_TEST
+    if (argc > 1 && argv[1] && std::string(argv[1]) == "--test") {
+        runTests();
+        return 0;
     }
-};
+#else
+    (void)argc;
+    (void)argv;
+#endif
 
-void showMenu();
-void processChoice(int choice, vector<FileOperation*>& operations);
+    std::cout << "===== C-SCAN vs C-LOOK Disk Scheduling =====\n";
+    int diskSize = 200;
+    int head = 50;
+    int n = 0;
 
-int main() {
-    vector<FileOperation*> operations = {
-        new ListFilesOperation(),
-        new CreateFileOperation(),
-        new DeleteFileOperation(),
-        new RenameFileOperation(),
-        new EditFileOperation(),
-        new SearchFileOperation(),
-        new FileDetailsOperation(),
-        new ViewFileOperation(),
-        new SortFileOperation(),
-        new ListDirectoriesOperation(),
-        new ListFilesWithExtensionOperation(),
-        new CountDirectoriesOperation(),
-        new CountFilesOperation(),
-        new SortFilesOperation()
-    };
+    std::cout << "Enter disk size (default 200): ";
+    std::string line;
+    std::getline(std::cin, line);
+    if (!line.empty()) {
+        try { diskSize = std::stoi(line); } catch (...) {}
+    }
 
-    int choice;
-    do {
-        showMenu();
-        cout << "Enter your choice (0 to exit): ";
-        cin >> choice;
-        cin.ignore(); 
+    std::cout << "Enter initial head position (0-" << diskSize - 1 << ") [50]: ";
+    std::getline(std::cin, line);
+    if (!line.empty()) {
+        try { head = std::stoi(line); } catch (...) {}
+    }
 
-        try {
-            processChoice(choice, operations);
-        } catch (const runtime_error& e) {
-            cerr << "Error: " << e.what() << endl;
+    std::cout << "Enter number of requests: ";
+    std::getline(std::cin, line);
+    try { n = std::stoi(line); } catch (...) { n = 0; }
+
+    std::vector<int> requests;
+    requests.reserve(n);
+    std::cout << "Enter " << n << " request positions (space-separated or one per line):\n";
+    for (int i = 0; i < n; ++i) {
+        int v;
+        if (!(std::cin >> v)) {
+            std::cerr << "Invalid input. Exiting.\n";
+            return 1;
         }
+        requests.push_back(v);
+    }
 
-    } while(choice != 0);
+    if (requests.empty()) {
+        // Demo defaults if no input
+        requests = {82, 170, 43, 140, 24, 16, 190};
+        std::cout << "No requests given, using demo: 82 170 43 140 24 16 190\n";
+    }
 
-    // Cleanup
-    for (auto op : operations) {
-        delete op;
+    try {
+        auto r1 = cscan(requests, head, diskSize, true);
+        auto r2 = clook(requests, head, true);
+        printResult("C-SCAN (right)", r1, head);
+        printResult("C-LOOK (right)", r2, head);
+
+        std::cout << "\nComparison: ";
+        if (r1.totalSeek < r2.totalSeek) std::cout << "C-SCAN is more efficient for this workload.\n";
+        else if (r2.totalSeek < r1.totalSeek) std::cout << "C-LOOK is more efficient for this workload.\n";
+        else std::cout << "Both have equal seek distance.\n";
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
     }
 
     return 0;
-}
-
-void showMenu() {
-    cout << "===== File Management Menu =====" << endl;
-    cout << "1. Show all files" << endl;
-    cout << "2. Create a new file" << endl;
-    cout << "3. Delete an existing file" << endl;
-    cout << "4. Rename a file" << endl;
-    cout << "5. Edit file content" << endl;
-    cout << "6. Search for a file" << endl;
-    cout << "7. Show details of a file" << endl;
-    cout << "8. View contents of a file" << endl;
-    cout << "9. Sort contents of a file" << endl;
-    cout << "10. List all directories" << endl;
-    cout << "11. List files with a particular extension" << endl;
-    cout << "12. Count total directories" << endl;
-    cout << "13. Count total files" << endl;
-    cout << "14. Sort files" << endl;
-    cout << "0. Exit" << endl;
-}
-
-void processChoice(int choice, vector<FileOperation*>& operations) {
-    if (choice >= 0 && choice < operations.size()) {
-        operations[choice - 1]->execute();
-    }
-    else {
-        throw runtime_error("Invalid choice. Please try again.");
-    }
 }

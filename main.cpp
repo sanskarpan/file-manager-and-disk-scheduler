@@ -1,342 +1,386 @@
-#include <iostream>
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <algorithm>
+
 #include <sys/stat.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <stdexcept>
 
-using namespace std;
+namespace fs = std::filesystem;
+
+namespace {
+
+bool isValidFileName(const std::string& name) {
+    if (name.empty() || name.size() > 255) return false;
+    if (name == "." || name == "..") return false;
+    // Disallow path separators and control characters; prevent directory traversal.
+    for (char c : name) {
+        if (c == '/' || c == '\\' || c == '\0') return false;
+        if (static_cast<unsigned char>(c) < 32) return false;
+    }
+    if (name.find("..") != std::string::npos) return false;
+    return true;
+}
+
+bool isValidExtension(const std::string& ext) {
+    if (ext.empty() || ext.size() > 32) return false;
+    for (char c : ext) {
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-') return false;
+    }
+    return true;
+}
+
+std::string readToken(const std::string& prompt) {
+    std::string input;
+    std::cout << prompt;
+    std::cin >> input;
+    return input;
+}
+
+} // namespace
 
 // Base class for file operations
 class FileOperation {
 public:
-    virtual void execute() = 0; // Pure virtual function
-    virtual ~FileOperation() {} // Virtual destructor for polymorphic behavior
+    virtual void execute() = 0;
+    virtual ~FileOperation() = default;
 };
 
-// Derived class for listing files
 class ListFilesOperation : public FileOperation {
 public:
     void execute() override {
-#ifdef _WIN32
-        cout << "Listing all files and directories..." << endl;
-        system("dir");
-#else
-        cout << "Listing all files and directories..." << endl;
-        system("ls");
-#endif
+        std::cout << "Listing all files and directories in current directory:\n";
+        for (const auto& entry : fs::directory_iterator(".")) {
+            std::cout << "  " << entry.path().filename().string();
+            if (entry.is_directory()) std::cout << "/";
+            std::cout << "\n";
+        }
     }
 };
 
-// Derived class for creating a file
 class CreateFileOperation : public FileOperation {
 public:
     void execute() override {
-        string fileName, fileExtension;
-        cout << "Enter the name of the file you want to create (without extension): ";
-        cin >> fileName;
-        cout << "Enter the file extension (e.g., txt, cpp): ";
-        cin >> fileExtension;
-        ofstream file(fileName + "." + fileExtension);
-        if (!file) {
-            throw runtime_error("Error creating file.");
+        std::string fileName = readToken("Enter file name (without extension): ");
+        std::string fileExtension = readToken("Enter file extension (e.g., txt, cpp): ");
+        if (!isValidFileName(fileName) || !isValidExtension(fileExtension)) {
+            throw std::runtime_error("Invalid file name or extension.");
         }
-        cout << "File created successfully." << endl;
-        file.close();
+        fs::path filePath = fileName + "." + fileExtension;
+        if (fs::exists(filePath)) {
+            throw std::runtime_error("File already exists: " + filePath.string());
+        }
+        std::ofstream file(filePath);
+        if (!file) {
+            throw std::runtime_error("Error creating file: " + filePath.string());
+        }
+        std::cout << "File created successfully: " << filePath.string() << "\n";
     }
 };
 
-// Derived class for deleting a file
 class DeleteFileOperation : public FileOperation {
 public:
     void execute() override {
-#ifdef _WIN32
-        string delCommand = "del ";
-#else
-        string delCommand = "rm ";
-#endif
-        string fileName;
-        cout << "Enter the name of the file you want to delete (including extension): ";
-        cin >> fileName;
-        string command = delCommand + fileName;
-        if (system(command.c_str()) == 0)
-            cout << "File deleted successfully." << endl;
-        else
-            throw runtime_error("Error deleting file.");
+        std::string fileName = readToken("Enter file name to delete (including extension): ");
+        if (!isValidFileName(fileName)) {
+            throw std::runtime_error("Invalid file name.");
+        }
+        fs::path p(fileName);
+        std::error_code ec;
+        if (!fs::exists(p)) {
+            throw std::runtime_error("File does not exist: " + fileName);
+        }
+        if (fs::is_directory(p)) {
+            throw std::runtime_error("Refusing to delete directory with file delete: " + fileName);
+        }
+        if (!fs::remove(p, ec) || ec) {
+            throw std::runtime_error("Error deleting file: " + ec.message());
+        }
+        std::cout << "File deleted successfully.\n";
     }
 };
 
-// Derived class for renaming a file
 class RenameFileOperation : public FileOperation {
 public:
     void execute() override {
-        string oldFileName, newFileName;
-        cout << "Enter the current name of the file (including extension): ";
-        cin >> oldFileName;
-        cout << "Enter the new name of the file (including extension): ";
-        cin >> newFileName;
-        if (rename(oldFileName.c_str(), newFileName.c_str()) == 0)
-            cout << "File renamed successfully." << endl;
-        else
-            throw runtime_error("Error renaming file.");
+        std::string oldFileName = readToken("Enter current file name (including extension): ");
+        std::string newFileName = readToken("Enter new file name (including extension): ");
+        if (!isValidFileName(oldFileName) || !isValidFileName(newFileName)) {
+            throw std::runtime_error("Invalid file name.");
+        }
+        fs::path oldPath(oldFileName), newPath(newFileName);
+        if (!fs::exists(oldPath)) {
+            throw std::runtime_error("Source file does not exist: " + oldFileName);
+        }
+        if (fs::exists(newPath)) {
+            throw std::runtime_error("Destination already exists: " + newFileName);
+        }
+        std::error_code ec;
+        fs::rename(oldPath, newPath, ec);
+        if (ec) {
+            throw std::runtime_error("Error renaming file: " + ec.message());
+        }
+        std::cout << "File renamed successfully.\n";
     }
 };
 
-// Derived class for editing a file
 class EditFileOperation : public FileOperation {
 public:
     void execute() override {
-        string fileName;
-        cout << "Enter the name of the file you want to edit (including extension): ";
-        cin >> fileName;
-#ifdef _WIN32
-        system(("notepad " + fileName).c_str());
-#else
-        system(("nano " + fileName).c_str());
-#endif
+        std::string fileName = readToken("Enter file name to edit (including extension): ");
+        if (!isValidFileName(fileName)) {
+            throw std::runtime_error("Invalid file name.");
+        }
+        if (!fs::exists(fileName)) {
+            throw std::runtime_error("File does not exist: " + fileName);
+        }
+        const char* editor = std::getenv("EDITOR");
+        std::string editorCmd = editor ? editor : "nano";
+        // Basic allowlist for editor to prevent injection; fallback to nano.
+        // Only allow alphanumerics, dash, underscore, slash in editor path.
+        for (char c : editorCmd) {
+            if (!std::isalnum(static_cast<unsigned char>(c)) && c != '/' && c != '_' && c != '-' && c != '.') {
+                editorCmd = "nano";
+                break;
+            }
+        }
+        std::string command = editorCmd + " \"" + fileName + "\"";
+        int ret = std::system(command.c_str());
+        if (ret != 0) {
+            std::cout << "Editor exited with status " << ret << ". File may not have been edited.\n";
+        }
     }
 };
 
-// Derived class for searching a file
 class SearchFileOperation : public FileOperation {
 public:
     void execute() override {
-        string fileName;
-        cout << "Enter the name of the file you want to search for (including extension): ";
-        cin >> fileName;
-        ifstream file(fileName);
-        if (file.good())
-            cout << "File found." << endl;
-        else
-            cout << "File not found." << endl;
+        std::string fileName = readToken("Enter file name to search (including extension): ");
+        if (!isValidFileName(fileName)) {
+            throw std::runtime_error("Invalid file name.");
+        }
+        if (fs::exists(fs::path(fileName))) {
+            std::cout << "File found: " << fileName << "\n";
+        } else {
+            std::cout << "File not found: " << fileName << "\n";
+        }
     }
 };
 
-// Derived class for displaying file details
 class FileDetailsOperation : public FileOperation {
 public:
     void execute() override {
-        string fileName;
-        cout << "Enter the name of the file to show details (including extension): ";
-        cin >> fileName;
+        std::string fileName = readToken("Enter file name to show details (including extension): ");
+        if (!isValidFileName(fileName)) {
+            throw std::runtime_error("Invalid file name.");
+        }
         struct stat fileStat;
         if (stat(fileName.c_str(), &fileStat) == 0) {
-            cout << "File Details:" << endl;
-            cout << "Size: " << fileStat.st_size << " bytes" << endl;
-            cout << "Owner UID: " << fileStat.st_uid << endl;
-            cout << "Group GID: " << fileStat.st_gid << endl;
-            cout << "Permissions: " << oct << fileStat.st_mode << endl;
-            cout << "Last modified: " << ctime(&fileStat.st_mtime);
+            std::cout << "File Details:\n";
+            std::cout << "  Name: " << fileName << "\n";
+            std::cout << "  Size: " << fileStat.st_size << " bytes\n";
+            std::cout << "  Owner UID: " << fileStat.st_uid << "\n";
+            std::cout << "  Group GID: " << fileStat.st_gid << "\n";
+            std::cout << "  Permissions: " << std::oct << (fileStat.st_mode & 0777) << std::dec << "\n";
+            std::cout << "  Last modified: " << std::ctime(&fileStat.st_mtime);
+        } else {
+            throw std::runtime_error("Error retrieving file details: " + fileName);
         }
-        else
-            throw runtime_error("Error retrieving file details.");
     }
 };
 
-// Derived class for viewing file contents
 class ViewFileOperation : public FileOperation {
 public:
     void execute() override {
-        string fileName, line;
-        cout << "Enter the name of the file you want to view (including extension): ";
-        cin >> fileName;
-        ifstream file(fileName);
-        if (file.is_open()) {
-            cout << "File contents:" << endl;
-            while (getline(file, line))
-                cout << line << endl;
-            file.close();
+        std::string fileName = readToken("Enter file name to view (including extension): ");
+        if (!isValidFileName(fileName)) {
+            throw std::runtime_error("Invalid file name.");
         }
-        else
-            throw runtime_error("Unable to open file.");
+        std::ifstream file(fileName);
+        if (file.is_open()) {
+            std::cout << "File contents (" << fileName << "):\n";
+            std::cout << "----------------------------------------\n";
+            std::string line;
+            while (std::getline(file, line)) {
+                std::cout << line << "\n";
+            }
+            std::cout << "----------------------------------------\n";
+        } else {
+            throw std::runtime_error("Unable to open file: " + fileName);
+        }
     }
 };
 
-// Derived class for sorting file contents
 class SortFileOperation : public FileOperation {
 public:
     void execute() override {
-        string fileName, line;
-        vector<string> lines;
-        cout << "Enter the name of the file you want to sort (including extension): ";
-        cin >> fileName;
-        ifstream file(fileName);
-        if (file.is_open()) {
-            while (getline(file, line))
-                lines.push_back(line);
-            file.close();
-            sort(lines.begin(), lines.end());
-            ofstream sortedFile(fileName);
-            for (auto& l : lines)
-                sortedFile << l << endl;
-            sortedFile.close();
-            cout << "File sorted successfully." << endl;
+        std::string fileName = readToken("Enter file name to sort (including extension): ");
+        if (!isValidFileName(fileName)) {
+            throw std::runtime_error("Invalid file name.");
         }
-        else
-            throw runtime_error("Unable to open file.");
+        std::ifstream file(fileName);
+        if (!file.is_open()) {
+            throw std::runtime_error("Unable to open file: " + fileName);
+        }
+        std::vector<std::string> lines;
+        std::string line;
+        while (std::getline(file, line)) lines.push_back(line);
+        file.close();
+        std::sort(lines.begin(), lines.end());
+        std::ofstream sortedFile(fileName);
+        if (!sortedFile) throw std::runtime_error("Unable to write sorted file: " + fileName);
+        for (const auto& l : lines) sortedFile << l << "\n";
+        std::cout << "File sorted successfully (" << lines.size() << " lines).\n";
     }
 };
 
-// Derived class for listing directories
 class ListDirectoriesOperation : public FileOperation {
 public:
     void execute() override {
-#ifdef _WIN32
-        cout << "Listing all directories..." << endl;
-        system("dir /AD");
-#else
-        cout << "Listing all directories..." << endl;
-        system("ls -d */");
-#endif
+        std::cout << "Listing all directories:\n";
+        for (const auto& entry : fs::directory_iterator(".")) {
+            if (entry.is_directory()) {
+                std::cout << "  " << entry.path().filename().string() << "/\n";
+            }
+        }
     }
 };
 
-// Derived class for listing files with a specific extension
 class ListFilesWithExtensionOperation : public FileOperation {
 public:
     void execute() override {
-        string extension;
-        cout << "Enter the file extension (e.g., txt, cpp): ";
-        cin >> extension;
-#ifdef _WIN32
-        cout << "Listing all files with ." << extension << " extension..." << endl;
-        system(("dir /B *." + extension).c_str());
-#else
-        cout << "Listing all files with ." << extension << " extension..." << endl;
-        system(("ls *." + extension).c_str());
-#endif
+        std::string extension = readToken("Enter file extension (e.g., txt, cpp): ");
+        if (!isValidExtension(extension)) {
+            throw std::runtime_error("Invalid extension.");
+        }
+        std::cout << "Listing all files with ." << extension << " extension:\n";
+        bool found = false;
+        for (const auto& entry : fs::directory_iterator(".")) {
+            if (entry.is_regular_file() && entry.path().extension() == ("." + extension)) {
+                std::cout << "  " << entry.path().filename().string() << "\n";
+                found = true;
+            }
+        }
+        if (!found) std::cout << "  (none)\n";
     }
 };
 
-// Derived class for counting directories
 class CountDirectoriesOperation : public FileOperation {
 public:
     void execute() override {
-        DIR *dir;
-        struct dirent *ent;
         int count = 0;
-        if ((dir = opendir(".")) != NULL) {
-            while ((ent = readdir(dir)) != NULL) {
-                if (ent->d_type == DT_DIR) {
-                    std::string name(ent->d_name);
-                    if (name != "." && name != "..")
-                        count++;
-                }
+        for (const auto& entry : fs::directory_iterator(".")) {
+            if (entry.is_directory()) {
+                std::string name = entry.path().filename().string();
+                if (name != "." && name != "..") count++;
             }
-            closedir(dir);
-            cout << "Total number of directories: " << count << endl;
-        } else {
-            throw runtime_error("Error counting directories.");
         }
+        std::cout << "Total number of directories: " << count << "\n";
     }
 };
 
-// Derived class for counting files
 class CountFilesOperation : public FileOperation {
 public:
     void execute() override {
-        DIR *dir;
-        struct dirent *ent;
         int count = 0;
-        if ((dir = opendir(".")) != NULL) {
-            while ((ent = readdir(dir)) != NULL) {
-                if (ent->d_type == DT_REG) {
-                    count++;
-                }
-            }
-            closedir(dir);
-            cout << "Total number of files: " << count << endl;
-        } else {
-            throw runtime_error("Error counting files.");
+        for (const auto& entry : fs::directory_iterator(".")) {
+            if (entry.is_regular_file()) count++;
         }
+        std::cout << "Total number of files: " << count << "\n";
     }
 };
 
-// Derived class for sorting files
 class SortFilesOperation : public FileOperation {
 public:
     void execute() override {
-        cout << "Sorting files..." << endl;
-#ifdef _WIN32
-        cout << "This operation is not supported on Windows." << endl;
-#else
-        system("ls | sort");
-#endif
+        std::vector<std::string> files;
+        for (const auto& entry : fs::directory_iterator(".")) {
+            files.push_back(entry.path().filename().string());
+        }
+        std::sort(files.begin(), files.end());
+        std::cout << "Sorted directory listing:\n";
+        for (const auto& f : files) std::cout << "  " << f << "\n";
     }
 };
 
-void showMenu();
-void processChoice(int choice, vector<FileOperation*>& operations);
+void showMenu() {
+    std::cout << "\n===== File Management Menu =====\n"
+              << " 1. Show all files\n"
+              << " 2. Create a new file\n"
+              << " 3. Delete an existing file\n"
+              << " 4. Rename a file\n"
+              << " 5. Edit file content ($EDITOR or nano)\n"
+              << " 6. Search for a file\n"
+              << " 7. Show details of a file\n"
+              << " 8. View contents of a file\n"
+              << " 9. Sort contents of a file\n"
+              << "10. List all directories\n"
+              << "11. List files with a particular extension\n"
+              << "12. Count total directories\n"
+              << "13. Count total files\n"
+              << "14. Sort files (directory listing)\n"
+              << " 0. Exit\n";
+}
+
+void processChoice(int choice, const std::vector<std::unique_ptr<FileOperation>>& operations) {
+    if (choice == 0) return;
+    if (choice > 0 && choice <= static_cast<int>(operations.size())) {
+        operations[static_cast<size_t>(choice - 1)]->execute();
+    } else {
+        throw std::runtime_error("Invalid choice. Please enter 0-" + std::to_string(operations.size()));
+    }
+}
 
 int main() {
-    vector<FileOperation*> operations = {
-        new ListFilesOperation(),
-        new CreateFileOperation(),
-        new DeleteFileOperation(),
-        new RenameFileOperation(),
-        new EditFileOperation(),
-        new SearchFileOperation(),
-        new FileDetailsOperation(),
-        new ViewFileOperation(),
-        new SortFileOperation(),
-        new ListDirectoriesOperation(),
-        new ListFilesWithExtensionOperation(),
-        new CountDirectoriesOperation(),
-        new CountFilesOperation(),
-        new SortFilesOperation()
-    };
+    std::vector<std::unique_ptr<FileOperation>> operations;
+    operations.emplace_back(std::make_unique<ListFilesOperation>());
+    operations.emplace_back(std::make_unique<CreateFileOperation>());
+    operations.emplace_back(std::make_unique<DeleteFileOperation>());
+    operations.emplace_back(std::make_unique<RenameFileOperation>());
+    operations.emplace_back(std::make_unique<EditFileOperation>());
+    operations.emplace_back(std::make_unique<SearchFileOperation>());
+    operations.emplace_back(std::make_unique<FileDetailsOperation>());
+    operations.emplace_back(std::make_unique<ViewFileOperation>());
+    operations.emplace_back(std::make_unique<SortFileOperation>());
+    operations.emplace_back(std::make_unique<ListDirectoriesOperation>());
+    operations.emplace_back(std::make_unique<ListFilesWithExtensionOperation>());
+    operations.emplace_back(std::make_unique<CountDirectoriesOperation>());
+    operations.emplace_back(std::make_unique<CountFilesOperation>());
+    operations.emplace_back(std::make_unique<SortFilesOperation>());
 
-    int choice;
-    do {
+    while (true) {
         showMenu();
-        cout << "Enter your choice (0 to exit): ";
-        cin >> choice;
-        cin.ignore(); 
+        std::cout << "Enter your choice (0 to exit): ";
+        int choice;
+        if (!(std::cin >> choice)) {
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::cerr << "Error: Please enter a numeric choice.\n";
+            continue;
+        }
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if (choice == 0) {
+            std::cout << "Exiting. Goodbye!\n";
+            break;
+        }
 
         try {
             processChoice(choice, operations);
-        } catch (const runtime_error& e) {
-            cerr << "Error: " << e.what() << endl;
+        } catch (const std::runtime_error& e) {
+            std::cerr << "Error: " << e.what() << "\n";
+        } catch (const std::exception& e) {
+            std::cerr << "Unexpected error: " << e.what() << "\n";
         }
-
-    } while(choice != 0);
-
-    // Cleanup
-    for (auto op : operations) {
-        delete op;
     }
 
     return 0;
-}
-
-void showMenu() {
-    cout << "===== File Management Menu =====" << endl;
-    cout << "1. Show all files" << endl;
-    cout << "2. Create a new file" << endl;
-    cout << "3. Delete an existing file" << endl;
-    cout << "4. Rename a file" << endl;
-    cout << "5. Edit file content" << endl;
-    cout << "6. Search for a file" << endl;
-    cout << "7. Show details of a file" << endl;
-    cout << "8. View contents of a file" << endl;
-    cout << "9. Sort contents of a file" << endl;
-    cout << "10. List all directories" << endl;
-    cout << "11. List files with a particular extension" << endl;
-    cout << "12. Count total directories" << endl;
-    cout << "13. Count total files" << endl;
-    cout << "14. Sort files" << endl;
-    cout << "0. Exit" << endl;
-}
-
-void processChoice(int choice, vector<FileOperation*>& operations) {
-    if (choice > 0 && choice <= static_cast<int>(operations.size())) {
-        operations[choice - 1]->execute();
-    }
-    else {
-        throw runtime_error("Invalid choice. Please try again.");
-    }
 }

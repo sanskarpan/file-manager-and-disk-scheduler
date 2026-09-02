@@ -1,11 +1,46 @@
+# OS / Editor
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.code-workspace
+
+# C++ build
+build/
+*.o
+*.out
 *.exe
+file_manager
+disk_scheduling
+disk_scheduling_test
+*.dSYM/
+
+# Python
 __pycache__/
 *.py[cod]
+*.pyo
 .venv/
 venv/
 .env
 .env.*
 !.env.example
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Data / sandbox
+data/
+*.log
+
+# Legacy scrambled draft (kept for reference in git history, not needed on disk)
+# try.py is replaced by app.py; prac.js was empty
 try.py
 prac.js
+
+# Large fixtures (if regenerated)
+# 12mb.txt is moved to fixtures/

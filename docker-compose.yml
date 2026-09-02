@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/data
+    environment:
+      - FILE_MANAGER_ROOT=/data
+      - HOST=0.0.0.0
+      - PORT=5000
+    restart: unless-stopped
